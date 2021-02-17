@@ -3,7 +3,7 @@ import serial
 import time
 
 count = 1
-negeer = False
+ignore = False
 
 
 def error_msg():
@@ -21,28 +21,22 @@ def error_msg():
     root.configure(background="black")
     canvas=tk.Canvas(root, width=381, height=210, bg="black")
     canvas.pack()
-    #frame = tk.Frame(root, bg="white")
-    #frame.place(relwidth=0.9, relheight=0.8, relx=0.05, rely=0.1)
-
-#####################################################################################################
 
     img = tk.PhotoImage(file="errorscreen.png")
     myimg = canvas.create_image(0,0, anchor="nw", image=img)
 
-########################################TELLER OP SCHERM#############################################################
+# Counter on screen
     tekst = tk.Label(root, text="Dit scherm sluit automatisch in:", bg="#ece9d9", fg="grey")
     tekst.pack()
     canvas.create_window(100, 190, window=tekst)
 
-
-
-    def countdown(teller):
+    def countdown(cntdwn):
         # change text in label
-        countdowntekst['text'] = teller
+        countdowntekst['text'] = cntdwn
 
-        if teller > 0:
+        if cntdwn > 0:
             # call countdown again after 1000ms (1s)
-            root.after(1000, countdown, teller - 1)
+            root.after(1000, countdown, cntdwn - 1)
         else:
             root.destroy()
 
@@ -50,40 +44,43 @@ def error_msg():
     countdowntekst.place(x=185, y=180)
 
     # call countdown first time
-    countdown(60)
+    countdown(10)
     # root.after(0, countdown, 10)
 
-########################################CODE OM TE STOPPEN#######################################################
+# Code to stop 3D-printer
     def stopcode():
-        global negeer
-        """ser = serial.Serial('COM3', 115200)
+        global ignore
+        """ser = serial.Serial('COM3', 115200, dsrdtr=True)
         time.sleep(2)
-        ser.write(str.encode("G28\r\n"))
+        ser.write(str.encode("G28 X0 Y0\r\n"))  #Home X- and Y-axis
+        ser.write(str.encode("M84\r\n"))        #Disable steppers
+        ser.write(str.encode("M106 S0\r\n"))    #Turn off fan
+        ser.write(str.encode("M104 S0\r\n"))    #Turn of hot-end
+        ser.write(str.encode("M140 S0\r\n"))    #Turn off bed
         time.sleep(1)"""
         print("stopping print")
         root.destroy()
-        negeer = True
+        ignore = True
 
     stopknop = tk.Button(root, text="Stop printer", padx=10, pady=5, fg="black", bg="red", command=stopcode)
     stopknop.place(x=220, y=130)
 
-#######################################CODE OM SCHERM TE NEGEREN########################################################
+# Code to ignore error screen
     def negeercode():
-        global negeer
-        negeer = True
+        global ignore
+        ignore = True
         root.destroy()
-        time.sleep(10)   #Time to snooze ignorebutton
-        negeer = False
+        time.sleep(10)   # Time to snooze error screen
+        ignore = False
 
-    negeerknop = tk.Button(root, text="Negeer errors", padx=10, pady=5, fg="black", bg="#ece9d9", command=negeercode)
-    negeerknop.place(x=100, y=130)
+    ignorebutton = tk.Button(root, text="Negeer errors", padx=10, pady=5, fg="black", bg="#ece9d9", command=negeercode)
+    ignorebutton.place(x=100, y=130)
 
-#####################################################################################################################
 
     root.resizable(False, False)
     root.mainloop()
 
-#######################################VERTRAGING OM GUI TE LATEN ZIEN##########################################
+# Delay to show user interface after detection (Eliminate false positives)
 # outside the loop
 from datetime import datetime, timedelta
 import winsound
@@ -95,7 +92,7 @@ while True:
         first_seen = datetime.now()
     elif count == 0:
         first_seen = None
-    elif count > 0 and datetime.now() - first_seen > timedelta(seconds=3) and negeer == False:
+    elif count > 0 and datetime.now() - first_seen > timedelta(seconds=3) and ignore == False:
         print("Count has been greater than 0 for more than 3 seconds")
         error_msg()
 
